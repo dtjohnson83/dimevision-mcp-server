@@ -1,0 +1,47 @@
+{
+  "name": "DimeVision Weld Analysis",
+  "description": "AI-powered weld analysis for any MCP-compatible AI assistant. Analyze weld photos, look up defect types, get technique tips, and understand quality scoring.",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "analyze_weld",
+      "description": "Analyze a weld photo and return quality score, defects, and recommendations. Use when someone asks to analyze, check, or rate a weld photo, or asks 'what's wrong with my weld' or 'how did my weld turn out'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "imageUrl": {
+            "type": "string",
+            "description": "URL of the weld photo to analyze"
+          }
+        },
+        "required": ["imageUrl"]
+      }
+    },
+    {
+      "name": "get_weld_defects",
+      "description": "Get information about weld defects, their causes, severity levels, and how to fix them. Use when someone asks about weld defects, what causes porosity, undercut, cracks, or other weld problems.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_bead_builder_tips",
+      "description": "Get MIG, TIG, and Stick welding technique tips and common mistakes. Use when someone asks for welding tips, how to improve their bead, or asks about welding technique.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_weld_quality_score",
+      "description": "Explain how DimeVision's 0-100 weld quality scoring works, what scores mean (pass/fail/professional/mastery), and the AWS/ASME standards used. Use when someone asks what a weld score means or how scoring works.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "categories": ["Industrial", "Education", "Manufacturing"],
+  "tags": ["welding", "weld analysis", "quality control", "manufacturing", "education", "AI"]
+}
