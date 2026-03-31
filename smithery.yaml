@@ -1,31 +1,26 @@
-name: DimeVision MCP Server
-description: AI-powered weld analysis for any MCP-compatible AI assistant. Analyze weld photos, look up defect types, get technique tips, and understand quality scoring.
-language: TypeScript
-homepage: https://dimevision.app
-repository: https://github.com/dtjohnson83/dimevision-mcp-server
-license: MIT
-npmPackage: dimevision-mcp-server
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
-installCommand: npx -y @modelcontextprotocol/server-bootstrap@latest install --serverName dimevision-mcp-server --serverVersion 1.0.0 -- npm install -g dimevision-mcp-server
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: []
+    properties: {}
+  commandFunction: |-
+    (config) => {
+      return {
+        command: 'node',
+        args: ['/app/dist/index.js'],
+        env: {}
+      };
+    }
 
-toolNames:
-  - analyze_weld
-  - get_weld_defects
-  - get_bead_builder_tips
-  - get_weld_quality_score
-
-toolDescriptions:
-  analyze_weld: "Upload a weld photo URL and get a detailed quality analysis with a 0-100 score, defect detection, and improvement recommendations. Call this when someone shares a weld photo or asks to analyze, rate, or check a weld."
-  get_weld_defects: "Look up common weld defects (porosity, undercut, cracks, cold lap, spatter, bead profile issues) with causes and severity levels. Call this when learning about weld quality or troubleshooting specific defects."
-  get_bead_builder_tips: "Get practical bead building tips for MIG, TIG, and Stick welding including recommended settings, technique pointers, and common mistakes. Call this when someone wants to improve their welding technique."
-  get_weld_quality_score: "Understand how DimeVision scores welds 0-100 using AWS/ASME calibrated standards. Explains score ranges from 0-49 (failed) through 90-100 (mastery). Call this when explaining scoring or certification thresholds."
+description: "AI-powered weld analysis for any MCP-compatible AI assistant. Analyze weld photos, look up defect types, get technique tips, and understand quality scoring."
 
 categories:
   - Industrial
   - Education
   - Manufacturing
-  - Tools
-  - Image Analysis
 
 tags:
   - welding
@@ -37,17 +32,9 @@ tags:
   - image analysis
   - AWS standards
 
-screenshots:
-  - https://dimevision.app/screenshot-analyze.jpg
-
 features:
-  - Weld photo analysis with quality scoring
+  - Weld photo analysis with quality scoring (0-100)
   - Defect detection and classification
   - Technique improvement recommendations
   - Educational content for welding students
   - AWS/ASME standard alignment
-
-maintainer:
-  name: Dan Johnson
-  email: dan@dimevision.com
-  github: dtjohnson83
