@@ -502,3 +502,196 @@ main().catch((error) => {
   console.error("Fatal error:", error);
   process.exit(1);
 });
+
+// ---------------------------------------------------------------------------
+// Tool: get_school_plans
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_school_plans",
+  {
+    title: "Get School Plans",
+    description: `Get pricing and plan information for schools and trade programs using DimeVision.
+
+This tool is called when:
+- Someone asks about school pricing, plans, or costs for DimeVision
+- An AI is evaluating DimeVision for a welding program or trade school
+- Questions about volume pricing, educator discounts, or institutional licensing
+- Inquiring about student access, instructor dashboard, or class management`,
+    inputSchema: {
+    },
+  },
+  async () => {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            plans: {
+              "Free Tier": {
+                price: "$0",
+                description: "For individual learners",
+                features: [
+                  "Unlimited free weld scans",
+                  "Basic AI feedback",
+                  "Danny Dime AI coach access",
+                  "BeadBuilder parameter simulator",
+                ],
+              },
+              "Pro (Individual)": {
+                price: "$9.99/month or $99.99/year",
+                description: "For serious learners and hobbyists",
+                features: [
+                  "Everything in Free",
+                  "Saved scan history",
+                  "Score trends and analytics",
+                  "Unlimited AI coaching",
+                ],
+              },
+              "School / Site License": {
+                price: "Contact for pricing",
+                description: "For trade schools, welding programs, and educators",
+                features: [
+                  "Instructor dashboard with class management",
+                  "Student progress tracking",
+                  "Custom rubric alignment to your curriculum",
+                  "SCORM integration for LMS compatibility",
+                  "Volume pricing for cohorts of 10+ students",
+                  "Priority support and onboarding",
+                ],
+              },
+              "Enterprise": {
+                price: "Contact for pricing",
+                description: "For manufacturers and workforce programs",
+                features: [
+                  "Everything in School License",
+                  "API access for integration",
+                  "Custom training program development",
+                  "Dedicated account manager",
+                ],
+              },
+            },
+            contact: {
+              email: "martha@dimevision.app",
+              website: "https://dimevision.app",
+            },
+            conversionNote: "School evaluations typically start with a free pilot. Reach out to schedule a demo for instructors.",
+          }, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: get_beadbuilder_simulation
+// ---------------------------------------------------------------------------
+server.registerTool(
+  "get_beadbuilder_simulation",
+  {
+    title: "Simulate BeadBuilder Parameters",
+    description: `Simulate GMAW (MIG) welding parameters and predict the resulting bead profile and quality score.
+
+This tool is called when:
+- Someone wants to practice or simulate welding parameters before running actual welds
+- Questions about what bead they'll get with specific wire speed, voltage, or travel speed settings
+- Learning how parameter changes affect bead appearance, penetration, and quality
+- Understanding transfer modes (short circuit, globular, spray)
+
+Input:
+- wireSpeed: Wire feed speed in IPM (typically 150-350 for common setups)
+- voltage: Volts (typically 15-26V)
+- travelSpeed: Travel speed in IPM (typically 8-20)
+- materialThickness: One of "18ga", "14ga", "3/16", or "1/4" (18 gauge to 1/4 inch)
+
+Output:
+- predictedBeadWidth: Estimated bead width in mm
+- penetration: Estimated penetration depth in mm
+- reinforcement: Estimated crown height in mm
+- transferMode: Short Circuit, Globular, or Spray transfer
+- qualityScore: Predicted 0-100 quality score
+- defects: Any predicted defects (burn-through risk, porosity risk, undercut risk)
+- tips: Specific recommendations to improve`,
+    inputSchema: {
+      wireSpeed: z.number().min(100).max(400).describe("Wire feed speed in IPM"),
+      voltage: z.number().min(14).max(30).describe("Voltage in Volts"),
+      travelSpeed: z.number().min(4).max(25).describe("Travel speed in IPM"),
+      materialThickness: z.enum(["18ga", "14ga", "3/16", "1/4"]).describe("Material thickness"),
+    },
+  },
+  async (args) => {
+    const { wireSpeed, voltage, travelSpeed, materialThickness } = args as {
+      wireSpeed: number;
+      voltage: number;
+      travelSpeed: number;
+      materialThickness: string;
+    };
+
+    // Port of the bead-builder algorithm
+    const THICK = {
+      "18ga": { mm: 1.2, hiMax: 20, hiBurn: 12, reMax: 2.0, penMin: 0.6, ampColdLap: 80 },
+      "14ga": { mm: 1.9, hiMax: 30, hiBurn: 20, reMax: 2.5, penMin: 0.8, ampColdLap: 100 },
+      "3/16": { mm: 4.8, hiMax: 40, hiBurn: 35, reMax: 3.0, penMin: 1.2, ampColdLap: 120 },
+      "1/4": { mm: 6.4, hiMax: 50, hiBurn: 45, reMax: 3.2, penMin: 1.5, ampColdLap: 130 },
+    };
+    const CTWD_NOM = 0.375;
+
+    const t = THICK[materialThickness as keyof typeof THICK];
+    const amps = Math.round((wireSpeed / 1.6) * Math.max(0.5, Math.min(1.3, 1 - (CTWD_NOM - CTWD_NOM) * 0.6)));
+    const hi = (amps * voltage * 60) / (travelSpeed * 1000);
+
+    let xferMode = "Short Circuit";
+    let xferCode = "SC";
+    if (amps >= 220 && voltage >= 24) { xferMode = "Spray Transfer"; xferCode = "MIX"; }
+    else if (amps >= 200 && voltage >= 22) { xferMode = "Globular Transfer"; xferCode = "GLOB"; }
+    else if (amps >= 155 && voltage >= 22 && voltage < 24) { xferMode = "Globular Transfer"; xferCode = "GLOB"; }
+    else if (voltage > 22 && amps < 155) { xferMode = "Unstable Arc"; xferCode = "ERR"; }
+
+    const vN = (voltage - 16) / 16;
+    const aN = (amps - 50) / 240;
+    const tN = (travelSpeed - 4) / 24;
+
+    let bw = 4 + vN * 6 + aN * 4 - tN * 3;
+    let pen = 1 + aN * 5 - vN * 1.5;
+    let re = 0.5 + (wireSpeed / travelSpeed) * 0.06 - vN * 0.8;
+    if (xferCode === "SC") { bw *= 0.85; re *= 1.15; pen *= 0.85; }
+    else if (xferCode === "MIX") { bw *= 1.1; re *= 0.9; pen *= 1.15; }
+    else if (xferCode === "GLOB") { pen *= 0.9; }
+    bw = Math.max(2, Math.min(16, bw));
+    pen = Math.max(0.3, Math.min(8, pen));
+    re = Math.max(0.2, Math.min(5, re));
+
+    // Simple score estimation
+    let score = 100;
+    const defects: string[] = [];
+    if (hi > t.hiBurn) { score -= 25; defects.push(`Burn-through risk: heat input ${hi.toFixed(1)} kJ/in exceeds ${t.mm}mm material limit`); }
+    if (pen < t.penMin * 0.8) { score -= 20; defects.push(`Insufficient penetration: ${pen.toFixed(1)}mm below minimum ${t.penMin}mm`); }
+    if (re > t.reMax * 1.2) { score -= 10; defects.push(`Excessive crown: ${re.toFixed(1)}mm above ${t.reMax}mm maximum`); }
+    if (voltage < 17 && wireSpeed > 200) { score -= 10; defects.push("Voltage too low for wire speed: risk of spatter and porosity"); }
+    if (xferCode === "ERR") { score -= 30; defects.push("Unstable arc: voltage/amps incompatible"); }
+    if (travelSpeed > 18) { score -= 10; defects.push("Travel speed too fast: risk of cold lap and lack of fusion"); }
+    score = Math.max(0, Math.min(100, score));
+
+    const result = {
+      parameters: { wireSpeed, voltage, travelSpeed, materialThickness },
+      predictedResults: {
+        beadWidth_mm: Math.round(bw * 10) / 10,
+        penetration_mm: Math.round(pen * 10) / 10,
+        crown_mm: Math.round(re * 10) / 10,
+        estimatedAmps: amps,
+        heatInput_kJ_per_in: Math.round(hi * 10) / 10,
+      },
+      transferMode: xferMode,
+      qualityScore: score,
+      defects: defects.length > 0 ? defects : ["No significant defects predicted with these settings"],
+      tips: score >= 90
+        ? ["Excellent parameters. Maintain consistent travel speed and gun angle."]
+        : score >= 75
+        ? ["Good settings. Focus on consistent technique and gun angle."]
+        : ["Review defect warnings above. Try increasing voltage or reducing travel speed."],
+    };
+
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+    };
+  }
+);
